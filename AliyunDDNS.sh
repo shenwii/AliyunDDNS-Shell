@@ -115,7 +115,7 @@ __insert_dns_record() {
     local query=$query'&SignatureVersion=1.0'
     local query=$query'&Timestamp='$(__timestamp)
     local query=$query'&Type='${type}
-    local query=$query'&Value='${val}
+    local query=$query'&Value='$(__ali_urlencode "${val}")
     local query=$query'&Version=2015-01-09'
     local signature="$(__ali_signature "$query")"
     local url="$Ali_API?$query&Signature=$(__ali_urlencode "$signature")"
@@ -139,7 +139,7 @@ __update_dns_record() {
     local query=$query'&SignatureVersion=1.0'
     local query=$query'&Timestamp='$(__timestamp)
     local query=$query'&Type='${type}
-    local query=$query'&Value='${val}
+    local query=$query'&Value='$(__ali_urlencode "${val}")
     local query=$query'&Version=2015-01-09'
     local signature="$(__ali_signature "$query")"
     local url="$Ali_API?$query&Signature=$(__ali_urlencode "$signature")"
