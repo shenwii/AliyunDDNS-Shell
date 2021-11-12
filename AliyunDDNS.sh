@@ -179,7 +179,6 @@ fi
 . "$env_file"
 
 __check_tool "curl"
-__check_tool "sha1sum"
 __check_tool "base64"
 __check_tool "openssl"
 __check_tool "hexdump"
