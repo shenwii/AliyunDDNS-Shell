@@ -38,8 +38,6 @@ __ali_urlencode() {
 }
 
 __ali_nonce() {
-  #_head_n 1 </dev/urandom | _digest "sha256" hex | cut -c 1-31
-  #Not so good...
   date +"%s%N"
 }
 
@@ -47,29 +45,8 @@ __timestamp() {
   date -u +"%Y-%m-%dT%H%%3A%M%%3A%SZ"
 }
 
-__hmac() {
-  alg="$1"
-  secret_hex="$2"
-  outputhex="$3"
-
-  if [ -z "$secret_hex" ]; then
-    return 1
-  fi
-
-  if [ "$alg" = "sha256" ] || [ "$alg" = "sha1" ]; then
-    if [ "$outputhex" ]; then
-      openssl dgst -"$alg" -mac HMAC -macopt "hexkey:$secret_hex" 2>/dev/null | cut -d = -f 2 | tr -d ' '
-    else
-      openssl dgst -"$alg" -mac HMAC -macopt "hexkey:$secret_hex" -binary 2>/dev/null
-    fi
-  else
-    return 1
-  fi
-
-}
-
 __ali_signature() {
-    printf "%s" "GET&%2F&$(__ali_urlencode "$1")" | __hmac "sha1" "$(printf "%s" "$access_key_secret&" | hexdump -v -e '/1 ""' -e '/1 " %02x" ""' | tr -d " ")" | base64
+    echo -n "GET&%2F&$(__ali_urlencode "$1")" | openssl dgst -sha1 -hmac "$access_key_secret&" -binary | openssl base64 -A
 }
 
 __json_value() {
@@ -94,7 +71,7 @@ __json_value() {
 __curl() {
     local res=""
     for i in $(seq 1 10); do
-        local res="$(curl -s "$@")"
+        local res="$($web_tool "$@")"
         if [ $? = 0 ]; then
             echo "$res"
             return 0
@@ -178,10 +155,20 @@ fi
 
 . "$env_file"
 
-__check_tool "curl"
-__check_tool "base64"
 __check_tool "openssl"
-__check_tool "hexdump"
+web_tool=""
+if which curl >/dev/null 2>&1; then
+    web_tool="curl -s"
+fi
+if [ -z "$web_tool" ]; then
+    if which wget >/dev/null 2>&1; then
+        web_tool="wget -O - -q"
+    fi
+fi
+if [ -z "$web_tool" ]; then
+    echo "curl or wget must be installed"
+    exit 1
+fi
 
 __check_parm "access_key_id"
 __check_parm "access_key_secret"
