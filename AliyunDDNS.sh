@@ -21,11 +21,11 @@ __check_tool() {
 }
 
 __ali_urlencode() {
-  _str="$1"
-  _str_len=${#_str}
-  _u_i=1
+  local _str="$1"
+  local _str_len=${#_str}
+  local _u_i=1
   while [ "$_u_i" -le "$_str_len" ]; do
-    _str_c="$(printf "%s" "$_str" | cut -c "$_u_i")"
+    local _str_c="$(printf "%s" "$_str" | cut -c "$_u_i")"
     case $_str_c in [a-zA-Z0-9.~_-])
       printf "%s" "$_str_c"
       ;;
@@ -33,7 +33,7 @@ __ali_urlencode() {
       printf "%%%02X" "'$_str_c"
       ;;
     esac
-    _u_i="$(expr "${_u_i}" + 1)"
+    local _u_i="$(expr "${_u_i}" + 1)"
   done
 }
 
@@ -46,7 +46,8 @@ __timestamp() {
 }
 
 __ali_signature() {
-    echo -n "GET&%2F&$(__ali_urlencode "$1")" | openssl dgst -sha1 -hmac "$access_key_secret&" -binary | openssl base64 -A
+    local secret="$1"
+    echo -n "GET&%2F&$(__ali_urlencode "$2")" | openssl dgst -sha1 -hmac "$secret&" -binary | openssl base64 -A
 }
 
 __json_value() {
@@ -82,11 +83,14 @@ __curl() {
 }
 
 __get_dns_record() {
-    local rr="$1"
-    local type="$2"
-    local query="AccessKeyId=${access_key_id}"
+    local key_id="$1"
+    local secret="$2"
+    local dmn="$3"
+    local rr="$4"
+    local type="$5"
+    local query="AccessKeyId=${key_id}"
     local query=$query'&Action=DescribeDomainRecords'
-    local query=$query'&DomainName='${domain_name}
+    local query=$query'&DomainName='${dmn}
     local query=$query'&Format=json'
     local query=$query'&RRKeyWord='${rr}
     local query=$query'&SignatureMethod=HMAC-SHA1'
@@ -95,19 +99,22 @@ __get_dns_record() {
     local query=$query'&Timestamp='$(__timestamp)
     local query=$query'&TypeKeyWord='${type}
     local query=$query'&Version=2015-01-09'
-    local signature="$(__ali_signature "$query")"
+    local signature="$(__ali_signature "$secret" "$query")"
     local url="$Ali_API?$query&Signature=$(__ali_urlencode "$signature")"
     __curl "$url"
     return $?
 }
 
 __insert_dns_record() {
-    local rr="$1"
-    local type="$2"
-    local val="$3"
-    local query="AccessKeyId=${access_key_id}"
+    local key_id="$1"
+    local secret="$2"
+    local dmn="$3"
+    local rr="$4"
+    local type="$5"
+    local val="$6"
+    local query="AccessKeyId=${key_id}"
     local query=$query'&Action=AddDomainRecord'
-    local query=$query'&DomainName='${domain_name}
+    local query=$query'&DomainName='${dmn}
     local query=$query'&Format=json'
     local query=$query'&RR='${rr}
     local query=$query'&SignatureMethod=HMAC-SHA1'
@@ -117,20 +124,23 @@ __insert_dns_record() {
     local query=$query'&Type='${type}
     local query=$query'&Value='$(__ali_urlencode "${val}")
     local query=$query'&Version=2015-01-09'
-    local signature="$(__ali_signature "$query")"
+    local signature="$(__ali_signature "$secret" "$query")"
     local url="$Ali_API?$query&Signature=$(__ali_urlencode "$signature")"
     __curl "$url"
     return $?
 }
 
 __update_dns_record() {
-    local rr="$1"
-    local type="$2"
-    local val="$3"
-    local recid="$4"
-    local query="AccessKeyId=${access_key_id}"
+    local key_id="$1"
+    local secret="$2"
+    local dmn="$3"
+    local rr="$4"
+    local type="$5"
+    local val="$6"
+    local recid="$7"
+    local query="AccessKeyId=${key_id}"
     local query=$query'&Action=UpdateDomainRecord'
-    local query=$query'&DomainName='${domain_name}
+    local query=$query'&DomainName='${dmn}
     local query=$query'&Format=json'
     local query=$query'&RR='${rr}
     local query=$query'&RecordId='${recid}
@@ -141,7 +151,7 @@ __update_dns_record() {
     local query=$query'&Type='${type}
     local query=$query'&Value='$(__ali_urlencode "${val}")
     local query=$query'&Version=2015-01-09'
-    local signature="$(__ali_signature "$query")"
+    local signature="$(__ali_signature "$secret" "$query")"
     local url="$Ali_API?$query&Signature=$(__ali_urlencode "$signature")"
     __curl "$url"
     return $?
@@ -191,17 +201,17 @@ for iptype in "A" "AAAA"; do
         fi
         echo "handle ipv6..."
     fi
-    respon="$(__get_dns_record "${host_record}" "$iptype")"
+    respon="$(__get_dns_record "${access_key_id}" "${access_key_secret}" "${domain_name}" "${host_record}" "$iptype")"
     dns_record_id="$(__json_value "$respon" "RecordId" "string")"
     dns_value="$(__json_value "$respon" "Value" "string")"
     if [ -z "$dns_record_id" ] || [ -z "$dns_value" ]; then
         echo "insert dns record"
-        __insert_dns_record "${host_record}" "$iptype" "$ip"
+        __insert_dns_record "${access_key_id}" "${access_key_secret}" "${domain_name}" "${host_record}" "$iptype" "$ip"
         echo ""
     else
         if [ "$dns_value" != "$ip" ]; then
             echo "update dns record"
-            __update_dns_record "${host_record}" "$iptype" "$ip" "$dns_record_id"
+            __update_dns_record "${access_key_id}" "${access_key_secret}" "${domain_name}" "${host_record}" "$iptype" "$ip" "$dns_record_id"
             echo ""
         fi
     fi
