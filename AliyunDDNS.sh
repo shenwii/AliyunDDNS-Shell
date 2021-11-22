@@ -185,7 +185,12 @@ __check_parm "access_key_secret"
 __check_parm "domain_name"
 __check_parm "host_record"
 
-for iptype in "A" "AAAA"; do
+dns_type="A"
+if [ "$use_ipv6" = "1" ]; then
+    dns_type="$dns_type AAAA"
+fi
+
+for iptype in $dns_type; do
     if [ "$iptype" = "A" ]; then
         ip="$(__curl -4 "$IP_API")"
         if [ $? != 0 ] || [ -z "$ip" ]; then
