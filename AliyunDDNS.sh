@@ -239,7 +239,7 @@ if [ "${post_type}" = textcard ]; then
 	post='{"touser":"@all", "toparty":"@all", "totag":"@all", "msgtype":"textcard", "agentid":'${agentid}', "textcard":{"title":"'${title}'", "description":"'${content}'", "url":"https://www.google.com"}}'
 fi
 
-if [ -z "${corpsecret}" ] || [ -z "${dns_record_id}" ] || [ -z "${dns_value}" ] || [ "${dns_value}" != "${ip}" ] || [ ! -s "${access_token}" ]; then
+if [ -z "${dns_record_id}" ] || [ -z "${dns_value}" ] || [ "${dns_value}" != "${ip}" ] || [ ! -s "${access_token}" ] && [ -z "${corpsecret}" ]; then
 	echo '获取access_token'
 	serverinfo=$(curl -s "https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=${corpid}&corpsecret=${corpsecret}")
 	servererrmsg=$(echo ${serverinfo} | sed 's/,/\n/g' | grep "errmsg" | sed 's/:/\n/g' | sed '1d' | sed 's/"//g' | sed 's/}//g')
@@ -254,7 +254,7 @@ if [ -z "${corpsecret}" ] || [ -z "${dns_record_id}" ] || [ -z "${dns_value}" ] 
 	fi
 fi
 
-if [ -z "${corpsecret}" ] || [ ! -s "/tmp/ip.txt" ] || [ -z "${dns_record_id}" ] || [ -z "${dns_value}" ] || [ "${dns_value}" != "${ip}" ]; then
+if [ ! -s "/tmp/ip.txt" ] || [ -z "${dns_record_id}" ] || [ -z "${dns_value}" ] || [ "${dns_value}" != "${ip}" ] && [ -z "${corpsecret}" ]; then
 	if [ "${never}" != yes ]; then
 		echo '检测access_token'
 		access_token_expires_time_num=$(cat ${access_token_expires_time})
