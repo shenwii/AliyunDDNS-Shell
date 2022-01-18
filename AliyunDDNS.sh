@@ -3,7 +3,7 @@
 set -e
 
 Ali_API="https://alidns.aliyuncs.com/"
-IP_API="https://api64.ipify.org?format=text"
+IP_API="http://members.3322.org/dyndns/getip"
 
 __check_parm() {
     eval local val=\"\$"$1"\"
@@ -221,3 +221,89 @@ for iptype in $dns_type; do
         fi
     fi
 done
+
+title='路由器IP推送'
+content=`ifconfig -a | grep inet | grep -v inet6 | grep -v 127.0.0.1 | grep -v 192.168.1.1 | awk '{print $2}' | tr -d "addr:"`
+corpid=''
+corpsecret=''
+agentid=''
+access_token='/tmp/access_token.cache'
+access_token_expires_time='/tmp/access_token_expires_time.cache'
+post_type='textcard'
+
+if [ "${post_type}" = text ]; then
+	post='{"touser":"@all", "toparty":"@all", "totag":"@all", "msgtype":"text", "agentid":'${agentid}', "text":{"content":"'${content}'"}}'
+fi
+
+if [ "${post_type}" = textcard ]; then
+	post='{"touser":"@all", "toparty":"@all", "totag":"@all", "msgtype":"textcard", "agentid":'${agentid}', "textcard":{"title":"'${title}'", "description":"'${content}'", "url":"https://www.google.com"}}'
+fi
+
+if [ -z "${corpsecret}" ] || [ -z "${dns_record_id}" ] || [ -z "${dns_value}" ] || [ "${dns_value}" != "${ip}" ] || [ ! -s "${access_token}" ]; then
+	echo '获取access_token'
+	serverinfo=$(curl -s "https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=${corpid}&corpsecret=${corpsecret}")
+	servererrmsg=$(echo ${serverinfo} | sed 's/,/\n/g' | grep "errmsg" | sed 's/:/\n/g' | sed '1d' | sed 's/"//g' | sed 's/}//g')
+	if [ "${servererrmsg}" = ok ]; then
+		echo 'access_token获取成功，返回信息：'${servererrmsg}''
+		echo `expr $(date +%s) + 7200` > ${access_token_expires_time}
+		echo ${serverinfo} | sed 's/,/\n/g' | grep "access_token" | sed 's/:/\n/g' | sed '1d' | sed 's/"//g' > ${access_token}
+		never='yes'
+	else
+		echo 'access_token获取失败，返回信息：'${servererrmsg}''
+		exit 0
+	fi
+fi
+
+if [ -z "${corpsecret}" ] || [ ! -s "/tmp/ip.txt" ] || [ -z "${dns_record_id}" ] || [ -z "${dns_value}" ] || [ "${dns_value}" != "${ip}" ]; then
+	if [ "${never}" != yes ]; then
+		echo '检测access_token'
+		access_token_expires_time_num=$(cat ${access_token_expires_time})
+		if [ "$(date +%s)" -gt "${access_token_expires_time_num}" ]; then
+			echo 'access_token失效'
+			serverinfo=$(curl -s "https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=${corpid}&corpsecret=${corpsecret}")
+			servererrmsg=$(echo ${serverinfo} | sed 's/,/\n/g' | grep "errmsg" | sed 's/:/\n/g' | sed '1d' | sed 's/"//g' | sed 's/}//g')
+			if [ "${servererrmsg}" = ok ]; then
+				echo 'access_token获取成功，返回信息：'${servererrmsg}''
+				echo `expr $(date +%s) + 7200` > ${access_token_expires_time}
+				echo ${serverinfo} | sed 's/,/\n/g' | grep "access_token" | sed 's/:/\n/g' | sed '1d' | sed 's/"//g' > ${access_token}
+			else
+				echo 'access_token获取失败，返回信息：'${servererrmsg}''
+				exit 0
+			fi
+		else
+			echo 'access_token有效'
+		fi
+	fi
+	access_token_in_url=`cat ${access_token}`
+	sendinfo=$(curl -s -d "${post}" https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=${access_token_in_url})
+	senderrmsg=$(echo ${sendinfo} | sed 's/,/\n/g' | grep "errmsg" | sed 's/:/\n/g' | sed '1d' | sed 's/"//g')
+	if [ "${senderrmsg}" = ok ]; then
+		sed -i '/AliyunDDNS/d' /etc/crontabs/root
+		echo "0 0 * * * /etc/AliyunDDNS.sh" >> /etc/crontabs/root
+		crontab /etc/crontabs/root
+		echo ${ip} > /tmp/ip.txt
+		echo '信息发送成功，返回信息：'${senderrmsg}''
+	else
+		echo '信息发送失败，返回信息：'${senderrmsg}''
+		exit 0
+	fi
+else
+	last_ip=`cat /tmp/ip.txt`
+	if [ "${ip}" != "${last_ip}" ]; then
+		access_token_in_url=`cat ${access_token}`
+		sendinfo=$(curl -s -d "${post}" https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=${access_token_in_url})
+		senderrmsg=$(echo ${sendinfo} | sed 's/,/\n/g' | grep "errmsg" | sed 's/:/\n/g' | sed '1d' | sed 's/"//g')
+		if [ "${senderrmsg}" = ok ]; then
+			sed -i '/AliyunDDNS/d' /etc/crontabs/root
+			echo "0 0 * * * /etc/AliyunDDNS.sh" >> /etc/crontabs/root
+			crontab /etc/crontabs/root
+			echo ${ip} > /tmp/ip.txt
+			echo '信息发送成功，返回信息：'${senderrmsg}''
+		else
+			echo '信息发送失败，返回信息：'${senderrmsg}''
+			exit 0
+		fi
+	else
+		echo 'IP未改变'
+	fi
+fi
