@@ -92,7 +92,7 @@ __get_dns_record() {
     local query=$query'&Action=DescribeDomainRecords'
     local query=$query'&DomainName='${dmn}
     local query=$query'&Format=json'
-    local query=$query'&RRKeyWord='${rr}
+    local query=$query"&RRKeyWord=$(__ali_urlencode "$rr")"
     local query=$query'&SignatureMethod=HMAC-SHA1'
     local query=$query"&SignatureNonce=$(__ali_nonce)"
     local query=$query'&SignatureVersion=1.0'
@@ -116,7 +116,7 @@ __insert_dns_record() {
     local query=$query'&Action=AddDomainRecord'
     local query=$query'&DomainName='${dmn}
     local query=$query'&Format=json'
-    local query=$query'&RR='${rr}
+    local query=$query"&RR=$(__ali_urlencode "$rr")"
     local query=$query'&SignatureMethod=HMAC-SHA1'
     local query=$query"&SignatureNonce=$(__ali_nonce)"
     local query=$query'&SignatureVersion=1.0'
@@ -142,7 +142,7 @@ __update_dns_record() {
     local query=$query'&Action=UpdateDomainRecord'
     local query=$query'&DomainName='${dmn}
     local query=$query'&Format=json'
-    local query=$query'&RR='${rr}
+    local query=$query"&RR=$(__ali_urlencode "$rr")"
     local query=$query'&RecordId='${recid}
     local query=$query'&SignatureMethod=HMAC-SHA1'
     local query=$query"&SignatureNonce=$(__ali_nonce)"
