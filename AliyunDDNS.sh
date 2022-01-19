@@ -3,7 +3,6 @@
 set -e
 
 Ali_API="https://alidns.aliyuncs.com/"
-IP_API="https://api64.ipify.org?format=text"
 
 __check_parm() {
     eval local val=\"\$"$1"\"
@@ -184,6 +183,7 @@ __check_parm "access_key_id"
 __check_parm "access_key_secret"
 __check_parm "domain_name"
 __check_parm "host_record"
+__check_parm "ip_api_url"
 
 dns_type="A"
 if [ "$use_ipv6" = "1" ]; then
@@ -192,14 +192,14 @@ fi
 
 for iptype in $dns_type; do
     if [ "$iptype" = "A" ]; then
-        ip="$(__curl -4 "$IP_API")"
+        ip="$(__curl -4 "$ip_api_url")"
         if [ $? != 0 ] || [ -z "$ip" ]; then
             echo "get ipv4 address failed"
             continue
         fi
         echo "handle ipv4..."
     else
-        ip="$(__curl -6 "$IP_API")"
+        ip="$(__curl -6 "$ip_api_url")"
         if [ $? != 0 ] || [ -z "$ip" ]; then
             echo "get ipv6 address failed"
             continue
