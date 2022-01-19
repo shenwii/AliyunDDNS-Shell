@@ -224,9 +224,9 @@ done
 
 title='路由器IP推送'
 content=`ifconfig -a | grep inet | grep -v inet6 | grep -v 127.0.0.1 | grep -v 192.168.1.1 | awk '{print $2}' | tr -d "addr:"`
-corpid='wwea7a175e5112df03'
-corpsecret='7_veKyo1wspblw3FfaqZ9q-juiyfNwH4ApLXqllbEbo'
-agentid='1000005'
+corpid=''
+corpsecret=''
+agentid=''
 access_token='/tmp/access_token.cache'
 access_token_expires_time='/tmp/access_token_expires_time.cache'
 post_type='textcard'
