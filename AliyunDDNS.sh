@@ -2,16 +2,8 @@
 
 set -e
 
+export BASE_PWD="$(dirname "$0")"
 Ali_API="https://alidns.aliyuncs.com/"
-
-__check_parm() {
-    eval local val=\"\$"$1"\"
-    if [ -z "$val" ]; then
-        echo "$1 is not set"
-        return 1
-    fi
-    return 0
-}
 
 __check_tool() {
     local tool="$1"
@@ -68,19 +60,6 @@ __json_value() {
     if [ "$resstr" != "$json_str" ]; then echo "$resstr"; fi
 }
 
-__curl() {
-    local res=""
-    for i in $(seq 1 10); do
-        local res="$($web_tool "$@")"
-        if [ $? = 0 ]; then
-            echo "$res"
-            return 0
-        fi
-    done
-    echo "$res"
-    return 1
-}
-
 __get_dns_record() {
     local key_id="$1"
     local secret="$2"
@@ -88,19 +67,19 @@ __get_dns_record() {
     local rr="$4"
     local type="$5"
     local query="AccessKeyId=${key_id}"
-    local query=$query'&Action=DescribeDomainRecords'
-    local query=$query'&DomainName='${dmn}
-    local query=$query'&Format=json'
-    local query=$query"&RRKeyWord=$(__ali_urlencode "$rr")"
-    local query=$query'&SignatureMethod=HMAC-SHA1'
-    local query=$query"&SignatureNonce=$(__ali_nonce)"
-    local query=$query'&SignatureVersion=1.0'
-    local query=$query'&Timestamp='$(__timestamp)
-    local query=$query'&TypeKeyWord='${type}
-    local query=$query'&Version=2015-01-09'
+    query=$query'&Action=DescribeDomainRecords'
+    query=$query'&DomainName='${dmn}
+    query=$query'&Format=json'
+    query=$query"&RRKeyWord=$(__ali_urlencode "$rr")"
+    query=$query'&SignatureMethod=HMAC-SHA1'
+    query=$query"&SignatureNonce=$(__ali_nonce)"
+    query=$query'&SignatureVersion=1.0'
+    query=$query'&Timestamp='$(__timestamp)
+    query=$query'&TypeKeyWord='${type}
+    query=$query'&Version=2015-01-09'
     local signature="$(__ali_signature "$secret" "$query")"
     local url="$Ali_API?$query&Signature=$(__ali_urlencode "$signature")"
-    __curl "$url"
+    lib_curl "$url"
     return $?
 }
 
@@ -112,20 +91,20 @@ __insert_dns_record() {
     local type="$5"
     local val="$6"
     local query="AccessKeyId=${key_id}"
-    local query=$query'&Action=AddDomainRecord'
-    local query=$query'&DomainName='${dmn}
-    local query=$query'&Format=json'
-    local query=$query"&RR=$(__ali_urlencode "$rr")"
-    local query=$query'&SignatureMethod=HMAC-SHA1'
-    local query=$query"&SignatureNonce=$(__ali_nonce)"
-    local query=$query'&SignatureVersion=1.0'
-    local query=$query'&Timestamp='$(__timestamp)
-    local query=$query'&Type='${type}
-    local query=$query'&Value='$(__ali_urlencode "${val}")
-    local query=$query'&Version=2015-01-09'
+    query=$query'&Action=AddDomainRecord'
+    query=$query'&DomainName='${dmn}
+    query=$query'&Format=json'
+    query=$query"&RR=$(__ali_urlencode "$rr")"
+    query=$query'&SignatureMethod=HMAC-SHA1'
+    query=$query"&SignatureNonce=$(__ali_nonce)"
+    query=$query'&SignatureVersion=1.0'
+    query=$query'&Timestamp='$(__timestamp)
+    query=$query'&Type='${type}
+    query=$query'&Value='$(__ali_urlencode "${val}")
+    query=$query'&Version=2015-01-09'
     local signature="$(__ali_signature "$secret" "$query")"
     local url="$Ali_API?$query&Signature=$(__ali_urlencode "$signature")"
-    __curl "$url"
+    lib_curl "$url"
     return $?
 }
 
@@ -138,31 +117,37 @@ __update_dns_record() {
     local val="$6"
     local recid="$7"
     local query="AccessKeyId=${key_id}"
-    local query=$query'&Action=UpdateDomainRecord'
-    local query=$query'&DomainName='${dmn}
-    local query=$query'&Format=json'
-    local query=$query"&RR=$(__ali_urlencode "$rr")"
-    local query=$query'&RecordId='${recid}
-    local query=$query'&SignatureMethod=HMAC-SHA1'
-    local query=$query"&SignatureNonce=$(__ali_nonce)"
-    local query=$query'&SignatureVersion=1.0'
-    local query=$query'&Timestamp='$(__timestamp)
-    local query=$query'&Type='${type}
-    local query=$query'&Value='$(__ali_urlencode "${val}")
-    local query=$query'&Version=2015-01-09'
+    query=$query'&Action=UpdateDomainRecord'
+    query=$query'&DomainName='${dmn}
+    query=$query'&Format=json'
+    query=$query"&RR=$(__ali_urlencode "$rr")"
+    query=$query'&RecordId='${recid}
+    query=$query'&SignatureMethod=HMAC-SHA1'
+    query=$query"&SignatureNonce=$(__ali_nonce)"
+    query=$query'&SignatureVersion=1.0'
+    query=$query'&Timestamp='$(__timestamp)
+    query=$query'&Type='${type}
+    query=$query'&Value='$(__ali_urlencode "${val}")
+    query=$query'&Version=2015-01-09'
     local signature="$(__ali_signature "$secret" "$query")"
     local url="$Ali_API?$query&Signature=$(__ali_urlencode "$signature")"
-    __curl "$url"
+    lib_curl "$url"
     return $?
 }
 
-env_file="$(dirname "$0")/AliyunDDNS.env"
-if ! [ -f "$env_file" ]; then
-    echo "$env_file not exists!"
-    exit 1
-fi
+__exec_plugins() {
+    local plugin_file
+    for plugin_file in "${BASE_PWD}/plugins/"*.sh; do
+        local plugin_base_name="$(basename "$plugin_file")"
+        local plugin_name=${plugin_base_name%%.*}
+        if eval [ \"\$"p_${plugin_name}_enable"\" = \"1\" ]; then
+            "$plugin_file" "$@"
+        fi
+    done
+}
 
-. "$env_file"
+. "${BASE_PWD}/AliyunDDNS.env"
+. "${BASE_PWD}/lib/common.sh"
 
 __check_tool "openssl"
 web_tool=""
@@ -179,11 +164,11 @@ if [ -z "$web_tool" ]; then
     exit 1
 fi
 
-__check_parm "access_key_id"
-__check_parm "access_key_secret"
-__check_parm "domain_name"
-__check_parm "host_record"
-__check_parm "ip_api_url"
+lib_check_parm "access_key_id"
+lib_check_parm "access_key_secret"
+lib_check_parm "domain_name"
+lib_check_parm "host_record"
+lib_check_parm "ip_api_url"
 
 dns_type="A"
 if [ "$use_ipv6" = "1" ]; then
@@ -192,14 +177,14 @@ fi
 
 for iptype in $dns_type; do
     if [ "$iptype" = "A" ]; then
-        ip="$(__curl -4 "$ip_api_url")"
+        ip="$(lib_curl -4 "$ip_api_url")"
         if [ $? != 0 ] || [ -z "$ip" ]; then
             echo "get ipv4 address failed"
             continue
         fi
         echo "handle ipv4..."
     else
-        ip="$(__curl -6 "$ip_api_url")"
+        ip="$(lib_curl -6 "$ip_api_url")"
         if [ $? != 0 ] || [ -z "$ip" ]; then
             echo "get ipv6 address failed"
             continue
@@ -213,11 +198,13 @@ for iptype in $dns_type; do
         echo "insert dns record"
         __insert_dns_record "${access_key_id}" "${access_key_secret}" "${domain_name}" "${host_record}" "$iptype" "$ip"
         echo ""
+        __exec_plugins "1" "${iptype}" "${domain_name}" "${host_record}" "" "$ip"
     else
         if [ "$dns_value" != "$ip" ]; then
             echo "update dns record"
             __update_dns_record "${access_key_id}" "${access_key_secret}" "${domain_name}" "${host_record}" "$iptype" "$ip" "$dns_record_id"
             echo ""
+            __exec_plugins "2" "${iptype}" "${domain_name}" "${host_record}" "$dns_value" "$ip"
         fi
     fi
 done
