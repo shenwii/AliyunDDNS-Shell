@@ -197,15 +197,7 @@ corpsecret=''
 agentid=''
 access_token='/tmp/access_token.cache'
 access_token_expires_time='/tmp/access_token_expires_time.cache'
-post_type='textcard'
-
-if [ "${post_type}" = text ]; then
-	post='{"touser":"@all", "toparty":"@all", "totag":"@all", "msgtype":"text", "agentid":'${agentid}', "text":{"content":"'${content}'"}}'
-fi
-
-if [ "${post_type}" = textcard ]; then
-	post='{"touser":"@all", "toparty":"@all", "totag":"@all", "msgtype":"textcard", "agentid":'${agentid}', "textcard":{"title":"'${title}'", "description":"'${content}'", "url":"https://www.google.com"}}'
-fi
+post='{"touser":"@all", "toparty":"@all", "totag":"@all", "msgtype":"text", "agentid":'${agentid}', "text":{"content":"'${content}'"}}'
 
 if [ ! -s "/tmp/ip.cache" ]; then
 	touch /tmp/ip.cache
@@ -215,7 +207,7 @@ else
 fi
 
 if [ -z "${corpid}" ] || [ -z "${corpsecret}" ] || [ -z "${agentid}" ]; then
-    exit 0
+	exit 0
 fi
 
 if [ -z "${dns_record_id}" ] || [ -z "${dns_value}" ] || [ "${dns_value}" != "${ip}" ] || [ "${ip}" != "${ip_cache}" ]; then
