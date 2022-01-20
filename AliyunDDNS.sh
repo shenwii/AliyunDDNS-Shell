@@ -41,25 +41,6 @@ __ali_signature() {
     echo -n "GET&%2F&$(__ali_urlencode "$2")" | openssl dgst -sha1 -hmac "$secret&" -binary | openssl base64 -A
 }
 
-__json_value() {
-    local json_str="$1"
-    local key="$2"
-    if [ -z "$3" ]; then
-        local format="string"
-    else
-        local format="$3"
-    fi
-    if [ "$format" = "string" ]; then
-        local resstr="$(echo "$1" | sed "s/^.*\"${key}\"\\s*:\"\\([^\"]*\\)\".*$/\\1/")"
-    elif [ "$format" = "number" ]; then
-        local resstr="$(echo "$1" | sed "s/^.*\"${key}\"\\s*:\\([0-9.]\\+\\).*$/\\1/")"
-    else
-        echo "unsupported format: $format"
-        return 1
-    fi
-    if [ "$resstr" != "$json_str" ]; then echo "$resstr"; fi
-}
-
 __get_dns_record() {
     local key_id="$1"
     local secret="$2"
@@ -192,8 +173,8 @@ for iptype in $dns_type; do
         echo "handle ipv6..."
     fi
     respon="$(__get_dns_record "${access_key_id}" "${access_key_secret}" "${domain_name}" "${host_record}" "$iptype")"
-    dns_record_id="$(__json_value "$respon" "RecordId" "string")"
-    dns_value="$(__json_value "$respon" "Value" "string")"
+    dns_record_id="$(lib_json_value "$respon" "RecordId" "string")"
+    dns_value="$(lib_json_value "$respon" "Value" "string")"
     if [ -z "$dns_record_id" ] || [ -z "$dns_value" ]; then
         echo "insert dns record"
         __insert_dns_record "${access_key_id}" "${access_key_secret}" "${domain_name}" "${host_record}" "$iptype" "$ip"
