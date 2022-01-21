@@ -119,6 +119,7 @@ __update_dns_record() {
 __exec_plugins() {
     local plugin_file
     for plugin_file in "${BASE_PWD}/plugins/"*.sh; do
+        if ! [ -e "$plugin_file" ]; then return 0; fi
         local plugin_base_name="$(basename "$plugin_file")"
         local plugin_name=${plugin_base_name%%.*}
         if eval [ \"\$"p_${plugin_name}_enable"\" = \"1\" ]; then
@@ -131,19 +132,7 @@ __exec_plugins() {
 . "${BASE_PWD}/lib/common.sh"
 
 __check_tool "openssl"
-web_tool=""
-if which curl >/dev/null 2>&1; then
-    web_tool="curl -s"
-fi
-if [ -z "$web_tool" ]; then
-    if which wget >/dev/null 2>&1; then
-        web_tool="wget -O - -q"
-    fi
-fi
-if [ -z "$web_tool" ]; then
-    echo "curl or wget must be installed"
-    exit 1
-fi
+__check_tool "curl"
 
 lib_check_parm "access_key_id"
 lib_check_parm "access_key_secret"

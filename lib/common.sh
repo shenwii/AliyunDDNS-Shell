@@ -10,11 +10,10 @@ lib_check_parm() {
 }
 
 #curl的封装
-#后端可能是curl或者wget
 lib_curl() {
     local res=""
     for i in $(seq 1 10); do
-        local res="$($web_tool "$@")"
+        local res="$(curl -s "$@")"
         if [ $? = 0 ]; then
             echo "$res"
             return 0

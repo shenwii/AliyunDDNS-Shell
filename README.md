@@ -2,7 +2,7 @@
 shell版阿里云动态DNS
 
 ## 依赖工具
-* curl或wget
+* curl
 * openssl
 
 ## 使用方法
