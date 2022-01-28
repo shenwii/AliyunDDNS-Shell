@@ -40,7 +40,7 @@ if [ "$(lib_json_value "$respon" "errmsg" "string")" != "ok" ]; then
     exit 1
 fi
 access_token="$(lib_json_value "$respon" "access_token" "string")"
-respon=$(lib_curl "$API_URL/cgi-bin/message/send?access_token=${access_token}")
+respon=$(lib_curl -d "$post" -X "POST" "$API_URL/cgi-bin/message/send?access_token=${access_token}")
 if [ "$(lib_json_value "$respon" "errmsg" "string")" != "ok" ]; then
     echo "send message failed."
     echo "$respon"
